@@ -104,6 +104,7 @@ from __future__ import division
 
 import os
 import signal
+import sys
 
 from collections import defaultdict
 from contextlib import contextmanager
@@ -119,6 +120,10 @@ def clock():
     times = os.times()
     return times[0] + times[1]
 
+def _itervalues(d):
+    if sys.version_info[0] > 2:
+        return d.values()
+    return d.values()
 
 ###########################################################################
 ## Collection data structures
@@ -350,7 +355,7 @@ def display(fp=None, format=0):
 def display_by_line(fp):
     '''Print the profiler data with each sample line represented
     as one row in a table.  Sorted by self-time per line.'''
-    l = [CallStats(x) for x in CallData.all_calls.itervalues()]
+    l = [CallStats(x) for x in _itervalues(CallData.all_calls)]
     l.sort(reverse=True, key=lambda x: x.self_secs_in_proc)
 
     print >> fp, ('%5.5s %10.10s   %7.7s  %-8.8s' %
@@ -387,7 +392,7 @@ def display_by_method(fp):
     print >> fp, ('%5.5s  %9.9s  %8.8s  %-8.8s' %
                   ("time", "seconds", "seconds", "name"))
 
-    calldata = [CallStats(x) for x in CallData.all_calls.itervalues()]
+    calldata = [CallStats(x) for x in _itervalues(CallData.all_calls)]
 
     grouped = defaultdict(list)
     for call in calldata:
