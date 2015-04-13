@@ -408,8 +408,8 @@ def display_by_method(fp):
             total_cum_sec += sample.cum_secs_in_proc
             total_self_sec += sample.self_secs_in_proc
             total_percent += sample.pcnt_time_in_proc
-        functiondata.append((fname, 
-                             total_cum_sec, 
+        functiondata.append((fname,
+                             total_cum_sec,
                              total_self_sec,
                              total_percent,
                              samples))
