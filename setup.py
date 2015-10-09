@@ -23,11 +23,11 @@ setup(
     long_description=read('README.rst'),
     classifiers=[
         "Development Status :: 3 - Alpha",
-        "Topic :: Utilities",
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
-        "Programming Language :: Python",
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python",
+        "Topic :: Utilities",
     ],
     **extra
 )
