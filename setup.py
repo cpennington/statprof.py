@@ -27,6 +27,7 @@ setup(
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python",
+        "Operating System :: Unix",
         "Topic :: Utilities",
     ],
     **extra
