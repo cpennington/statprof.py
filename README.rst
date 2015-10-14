@@ -28,16 +28,16 @@ It's easy to get started with ``statprof``: ::
     import statprof
 
     statprof.start()
-	try:
-	    my_questionable_function()
+    try:
+        my_questionable_function()
     finally:
-	    statprof.stop()
-		statprof.display()
+        statprof.stop()
+        statprof.display()
 
 Or with a contextmanager : ::
 
     import statprof
-    
+
     with statprof.profile():
         my_questionable_function()
 
