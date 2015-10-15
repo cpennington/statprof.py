@@ -12,7 +12,7 @@ sampling, and it is blind to hot spots *within* a function.
 In contrast, ``statprof`` samples the call stack periodically (by
 default, 1000 times per second), and it correctly tracks line numbers
 *inside* a function.  This means that if you have a 50-line function
-that contains two hot loops, `statprof` is likely to report them both
+that contains two hot loops, ``statprof`` is likely to report them both
 accurately.
 
 .. note::
@@ -41,14 +41,13 @@ Or with a contextmanager : ::
     with statprof.profile():
         my_questionable_function()
 
-
 For more comprehensive help, run ``pydoc statprof``.
 
 
 Portability
 -----------
 
-Because *statprof* uses the Unix ``itimer`` signal facility, it does not
+Because ``statprof`` uses the Unix ``itimer`` signal facility, it does not
 currently work on Windows. (Patches to improve portability would be
 most welcome.)
 
