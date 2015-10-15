@@ -12,7 +12,7 @@ sampling, and it is blind to hot spots *within* a function.
 In contrast, ``statprof`` samples the call stack periodically (by
 default, 1000 times per second), and it correctly tracks line numbers
 *inside* a function.  This means that if you have a 50-line function
-that contains two hot loops, `statprof` is likely to report them both
+that contains two hot loops, ``statprof`` is likely to report them both
 accurately.
 
 .. note::
@@ -20,27 +20,58 @@ accurately.
     implementation and portability notes below for details.
 
 
-Basic usage
------------
+Usage
+-----
 
 It's easy to get started with ``statprof``: ::
 
     import statprof
 
     statprof.start()
-	try:
-	    my_questionable_function()
+    try:
+        my_questionable_function()
     finally:
-	    statprof.stop()
-		statprof.display()
+        statprof.stop()
+        statprof.display()
 
 Or with a contextmanager : ::
 
     import statprof
-    
+
     with statprof.profile():
         my_questionable_function()
 
+The profiler can be invoked at more than one place inside your code and will
+report its findings for all of them at once at the end: ::
+
+    import statprof
+
+    statprof.start()
+    try:
+        my_questionable_function()
+    finally:
+        statprof.stop()
+
+    uninteresting_code()
+
+    statprof.start()
+    try:
+        my_other_questionable_function()
+    finally:
+        statprof.stop()
+
+    statprof.display()
+
+However, when you are profiling your code by repeatedly executing it in
+IPython, each run will add new samples to the previously collected ones, and
+display results aggregated over all runs. Since you will likely just want to
+see the results for the last run, remember to reset the profiler first: ::
+
+    import statprof
+
+    statprof.reset()
+    with statprof.profile():
+        my_questionable_function()
 
 For more comprehensive help, run ``pydoc statprof``.
 
@@ -48,7 +79,7 @@ For more comprehensive help, run ``pydoc statprof``.
 Portability
 -----------
 
-Because *statprof* uses the Unix ``itimer`` signal facility, it does not
+Because ``statprof`` uses the Unix ``itimer`` signal facility, it does not
 currently work on Windows. (Patches to improve portability would be
 most welcome.)
 
