@@ -123,7 +123,7 @@ def clock():
 def _itervalues(d):
     if sys.version_info[0] > 2:
         return d.values()
-    return d.values()
+    return d.itervalues()
 
 ###########################################################################
 ## Collection data structures
