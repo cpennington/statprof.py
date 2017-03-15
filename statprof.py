@@ -106,7 +106,7 @@ import os
 import signal
 import sys
 
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from contextlib import contextmanager
 
 
@@ -285,15 +285,33 @@ def reset(frequency=None):
     state.reset(frequency)
 
 
+class DisplayFormats:
+    ByLine = 0
+    ByMethod = 1
+    CSV = 2
+
+
+class SortOrders:
+    BySelf = 0
+    ByCumulative = 1
+
+
+def sort_key(ordering):
+    if ordering == SortOrders.BySelf:
+        return lambda x: x.self_secs_in_proc
+    elif ordering == SortOrders.ByCumulative:
+        return lambda x: x.cum_secs_in_proc
+
+
 @contextmanager
-def profile(verbose=True):
+def profile(verbose=True, fp=None, format=DisplayFormats.ByLine, sort_order=SortOrders.BySelf):
     start()
     try:
         yield
     finally:
         stop()
         if verbose:
-            display()
+            display(fp, format, sort_order)
 
 
 ###########################################################################
@@ -311,10 +329,11 @@ class CallStats(object):
         self.filepath = call_data.key.filename
         self.filename = basename
         self.function = call_data.key.name
-        self.name = '%s:%d:%s' % (self.filename, self.lineno, self.function)
+        self.name = '%s:%d:%s' % (self.filepath, self.lineno, self.function)
         self.pcnt_time_in_proc = self_samples / nsamples * 100
-        self.cum_secs_in_proc = cum_samples * secs_per_sample
         self.self_secs_in_proc = self_samples * secs_per_sample
+        self.cum_time_in_proc = cum_samples / nsamples * 100
+        self.cum_secs_in_proc = cum_samples * secs_per_sample
         self.num_calls = None
         self.self_secs_per_call = None
         self.cum_secs_per_call = None
@@ -326,12 +345,7 @@ class CallStats(object):
                                               self.name))
 
 
-class DisplayFormats:
-    ByLine = 0
-    ByMethod = 1
-
-
-def display(fp=None, format=0):
+def display(fp=None, format=DisplayFormats.ByLine, sort_order=SortOrders.BySelf):
     '''Print statistics, either to stdout or the given file object.'''
 
     if fp is None:
@@ -342,9 +356,11 @@ def display(fp=None, format=0):
         return
 
     if format == DisplayFormats.ByLine:
-        display_by_line(fp)
+        display_by_line(fp, sort_order=sort_order)
     elif format == DisplayFormats.ByMethod:
-        display_by_method(fp)
+        display_by_method(fp, sort_order=sort_order)
+    elif format == DisplayFormats.CSV:
+        display_by_csv(fp, sort_order=sort_order)
     else:
         raise Exception("Invalid display format")
 
@@ -353,11 +369,11 @@ def display(fp=None, format=0):
     fp.write('Total time: %f seconds\n' % state.accumulated_time)
 
 
-def display_by_line(fp):
+def display_by_line(fp, sort_order):
     '''Print the profiler data with each sample line represented
     as one row in a table.  Sorted by self-time per line.'''
     l = [CallStats(x) for x in _itervalues(CallData.all_calls)]
-    l.sort(reverse=True, key=lambda x: x.self_secs_in_proc)
+    l.sort(reverse=True, key=sort_key(sort_order))
 
     fp.write('%5.5s %10.10s   %7.7s  %-8.8s\n' %
              ('%  ', 'cumulative', 'self', ''))
@@ -384,7 +400,11 @@ def get_line_source(filename, lineno):
 
     return ""
 
-def display_by_method(fp):
+
+FunctionData = namedtuple('FunctionData', 'fname, cum_secs_in_proc, self_secs_in_proc, pcnt_time_in_proc, samples')
+
+
+def display_by_method(fp, sort_order):
     '''Print the profiler data with each sample function represented
     as one row in a table.  Important lines within that function are
     output as nested rows.  Sorted by self-time per line.'''
@@ -397,7 +417,7 @@ def display_by_method(fp):
 
     grouped = defaultdict(list)
     for call in calldata:
-        grouped[call.filename + ":" + call.function].append(call)
+        grouped[call.filepath + ":" + call.function].append(call)
 
     # compute sums for each function
     functiondata = []
@@ -409,21 +429,23 @@ def display_by_method(fp):
             total_cum_sec += sample.cum_secs_in_proc
             total_self_sec += sample.self_secs_in_proc
             total_percent += sample.pcnt_time_in_proc
-        functiondata.append((fname,
-                             total_cum_sec,
-                             total_self_sec,
-                             total_percent,
-                             samples))
+        functiondata.append(FunctionData(
+            fname,
+            total_cum_sec,
+            total_self_sec,
+            total_percent,
+            samples
+        ))
 
     # sort by total self sec
-    functiondata.sort(reverse=True, key=lambda x: x[2])
+    functiondata.sort(reverse=True, key=sort_key(sort_order))
 
     for function in functiondata:
-        fp.write('%6.2f %9.2f %9.2f  %s\n' % (function[3], # total percent
-                                              function[1], # total cum sec
-                                              function[2], # total self sec
-                                              function[0])) # file:function
-        function[4].sort(reverse=True, key=lambda i: i.self_secs_in_proc)
+        fp.write('%6.2f %9.2f %9.2f  %s\n' % (function.pcnt_time_in_proc,
+                                              function.cum_secs_in_proc,
+                                              function.self_secs_in_proc,
+                                              function.fname)) # file:function
+        function[4].sort(reverse=True, key=sort_key(sort_order))
         for call in function[4]:
             # only show line numbers for significant locations ( > 1% time spent)
             if call.pcnt_time_in_proc > 1:
@@ -435,3 +457,30 @@ def display_by_method(fp):
                                                              call.self_secs_in_proc,
                                                              call.lineno,
                                                              source))
+
+def display_by_csv(fp, sort_order):
+    import csv
+    writer = csv.writer(fp)
+    writer.writerow((
+        "File Path",
+        "Line Number",
+        "Function",
+        "Self (%)",
+        "Self (sec)",
+        "Cumulative (%)",
+        "Cumulative (sec)",
+    ))
+    for row in sorted(
+        (CallStats(x) for x in CallData.all_calls.itervalues()),
+        key=sort_key(sort_order),
+        reverse=True
+    ):
+        writer.writerow((
+            row.filepath,
+            row.lineno,
+            row.function,
+            row.pcnt_time_in_proc,
+            row.self_secs_in_proc,
+            row.cum_time_in_proc,
+            row.cum_secs_in_proc,
+        ))
