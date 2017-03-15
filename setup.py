@@ -30,5 +30,8 @@ setup(
         "Operating System :: Unix",
         "Topic :: Utilities",
     ],
+    entry_points={
+        'console_scripts': ['statprof=statprof:main']
+    },
     **extra
 )

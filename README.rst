@@ -41,6 +41,10 @@ Or with a contextmanager : ::
     with statprof.profile():
         my_questionable_function()
 
+Or as a separate executable: ::
+
+    statprof my_questionable_script
+
 The profiler can be invoked at more than one place inside your code and will
 report its findings for all of them at once at the end: ::
 

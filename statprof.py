@@ -106,6 +106,7 @@ import os
 import signal
 import sys
 
+from argparse import ArgumentParser
 from collections import defaultdict, namedtuple
 from contextlib import contextmanager
 
@@ -484,3 +485,46 @@ def display_by_csv(fp, sort_order):
             row.cum_time_in_proc,
             row.cum_secs_in_proc,
         ))
+
+
+def main(args=sys.argv):
+    parser = ArgumentParser()
+    parser.add_argument('progname', type=str)
+
+    formats = {
+        'line': DisplayFormats.ByLine,
+        'method': DisplayFormats.ByMethod,
+        'csv': DisplayFormats.CSV,
+    }
+    parser.add_argument('--format', type=str, choices=formats, default='line')
+    parser.add_argument('--outfile', type=str, default=None)
+
+    sorts = {
+        'cum': SortOrders.ByCumulative,
+        'self': SortOrders.BySelf,
+    }
+    parser.add_argument('--sort', type=str, choices=sorts, default='self')
+    parser.add_argument('--quiet', action='store_true')
+    opts, rest = parser.parse_known_args(args[1:])
+
+    sys.path.insert(0, os.path.dirname(opts.progname))
+    with open(opts.progname, 'rb') as fp:
+        code = compile(fp.read(), opts.progname, 'exec')
+    globs = {
+        '__file__': opts.progname,
+        '__name__': '__main__',
+        '__package__': None,
+    }
+
+    if opts.outfile is None:
+        outfile = sys.stdout
+    else:
+        outfile = open(opts.outfile('w'))
+
+    with profile(not opts.quiet, outfile, formats[opts.format], sorts[opts.sort]):
+        sys.argv = [opts.progname] + rest
+        exec code in globs, None
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
